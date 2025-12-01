@@ -410,6 +410,21 @@ const handleExport = () => {
   URL.revokeObjectURL(url);
 };
 
+const handleDelete = async () => {
+  if (!appState.currentNote) return;
+
+  const confirmDelete = window.confirm(
+    `Voulez-vous vraiment supprimer la note "${appState.currentNote.title}" ?`
+  );
+
+  if (!confirmDelete) return;
+
+  await remove(STORES.NOTES, appState.currentNote.id);
+  setState({ currentNote: null });
+  updateEditor(null);
+  await refreshNotesList();
+};
+
 // ===== IMAGE HANDLING =====
 
 const handleImageDrop = event => {
@@ -602,6 +617,7 @@ const initializeEventListeners = () => {
   bodyInput.addEventListener('dragleave', handleDragLeave);
 
   // Toolbar
+  document.getElementById('deleteBtn').addEventListener('click', handleDelete);
   document.getElementById('exportBtn').addEventListener('click', handleExport);
   document.querySelectorAll('.toolbar__button[data-action]').forEach(button => {
     button.addEventListener('click', () => {
