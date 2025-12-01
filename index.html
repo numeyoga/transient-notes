@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transient Notes</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div class="app">
+        <!-- Header -->
+        <header class="app__header">
+            <div class="header">
+                <h1 class="header__title">📝 Transient Notes</h1>
+                <div class="header__actions">
+                    <input
+                        type="text"
+                        class="header__search"
+                        placeholder="Rechercher..."
+                        id="searchInput"
+                    >
+                    <button class="header__button" id="newNoteBtn" title="Nouvelle note (Ctrl+N)">
+                        + Nouvelle note
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app__main">
+            <!-- Left Panel: PARA Navigation Tree -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar__content">
+                    <nav class="tree-nav">
+                        <div class="tree-nav__section" data-section="projects">
+                            <div class="tree-nav__header tree-nav__header--expanded" data-category="projects">
+                                <span class="tree-nav__icon">📁</span>
+                                <span class="tree-nav__label">Projects</span>
+                                <button class="tree-nav__toggle">▼</button>
+                            </div>
+                            <div class="tree-nav__children" id="projectsTree"></div>
+                        </div>
+
+                        <div class="tree-nav__section" data-section="areas">
+                            <div class="tree-nav__header tree-nav__header--expanded" data-category="areas">
+                                <span class="tree-nav__icon">📂</span>
+                                <span class="tree-nav__label">Areas</span>
+                                <button class="tree-nav__toggle">▼</button>
+                            </div>
+                            <div class="tree-nav__children" id="areasTree"></div>
+                        </div>
+
+                        <div class="tree-nav__section" data-section="resources">
+                            <div class="tree-nav__header tree-nav__header--expanded" data-category="resources">
+                                <span class="tree-nav__icon">📚</span>
+                                <span class="tree-nav__label">Resources</span>
+                                <button class="tree-nav__toggle">▼</button>
+                            </div>
+                            <div class="tree-nav__children" id="resourcesTree"></div>
+                        </div>
+
+                        <div class="tree-nav__section" data-section="archives">
+                            <div class="tree-nav__header tree-nav__header--expanded" data-category="archives">
+                                <span class="tree-nav__icon">🗄️</span>
+                                <span class="tree-nav__label">Archives</span>
+                                <button class="tree-nav__toggle">▼</button>
+                            </div>
+                            <div class="tree-nav__children" id="archivesTree"></div>
+                        </div>
+                    </nav>
+                </div>
+
+                <div class="sidebar__footer">
+                    <button class="sidebar__add-btn" id="newFolderBtn">+ Nouveau dossier</button>
+                </div>
+            </aside>
+
+            <!-- Middle Panel: Notes List -->
+            <section class="notes-list" id="notesList">
+                <div class="notes-list__header">
+                    <h2 class="notes-list__title" id="currentFolderTitle">Toutes les notes</h2>
+                    <select class="notes-list__sort" id="sortSelect">
+                        <option value="modified">Modifié</option>
+                        <option value="created">Créé</option>
+                        <option value="title">Titre</option>
+                    </select>
+                </div>
+
+                <div class="notes-list__items" id="notesListItems">
+                    <!-- Notes will be dynamically inserted here -->
+                </div>
+
+                <div class="notes-list__empty" id="emptyState">
+                    <p>📝 Aucune note ici</p>
+                    <p>Créez-en une pour commencer !</p>
+                </div>
+            </section>
+
+            <!-- Right Panel: Editor -->
+            <section class="editor" id="editor">
+                <div class="editor__toolbar">
+                    <div class="toolbar">
+                        <button class="toolbar__button" data-action="bold" title="Gras (Ctrl+B)">
+                            <strong>B</strong>
+                        </button>
+                        <button class="toolbar__button" data-action="italic" title="Italique (Ctrl+I)">
+                            <em>I</em>
+                        </button>
+                        <button class="toolbar__button" data-action="h1" title="Titre 1">H1</button>
+                        <button class="toolbar__button" data-action="h2" title="Titre 2">H2</button>
+                        <button class="toolbar__button" data-action="ul" title="Liste">• Liste</button>
+                        <div class="toolbar__spacer"></div>
+                        <button class="toolbar__button toolbar__button--export" id="exportBtn" title="Exporter en TXT">
+                            ⬇ Export TXT
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor__content">
+                    <input
+                        type="text"
+                        class="editor__title"
+                        id="noteTitle"
+                        placeholder="Titre de la note..."
+                    >
+
+                    <div
+                        class="editor__body"
+                        id="noteBody"
+                        contenteditable="true"
+                        data-placeholder="Commencez à écrire ou glissez des images ici..."
+                    ></div>
+                </div>
+
+                <div class="editor__empty" id="editorEmptyState">
+                    <div class="empty-state">
+                        <p class="empty-state__icon">✨</p>
+                        <p class="empty-state__text">Sélectionnez une note ou créez-en une nouvelle</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for new folder -->
+    <div class="modal" id="folderModal">
+        <div class="modal__content">
+            <h2 class="modal__title">Nouveau dossier</h2>
+            <input
+                type="text"
+                class="modal__input"
+                id="folderNameInput"
+                placeholder="Nom du dossier..."
+            >
+            <div class="modal__actions">
+                <button class="modal__button modal__button--cancel" id="cancelFolderBtn">Annuler</button>
+                <button class="modal__button modal__button--primary" id="createFolderBtn">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>
