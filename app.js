@@ -328,6 +328,45 @@ const handleNewNote = async () => {
   document.getElementById('noteTitle').focus();
 };
 
+const getOrCreateDefaultFolder = async category => {
+  const categoryFolders = appState.folders.filter(f => f.category === category);
+
+  if (categoryFolders.length > 0) {
+    return categoryFolders[0];
+  }
+
+  // Create default folder for this category
+  const folderName = {
+    projects: 'Projets généraux',
+    areas: 'Domaines généraux',
+    resources: 'Ressources générales',
+    archives: 'Archives générales'
+  }[category];
+
+  const folder = createFolder(folderName, category);
+  await add(STORES.FOLDERS, folder);
+  await refreshFolders();
+
+  return folder;
+};
+
+const handleNewNoteInCategory = async category => {
+  const folder = await getOrCreateDefaultFolder(category);
+  const note = createNote('Sans titre', '', folder.id);
+
+  await add(STORES.NOTES, note);
+
+  // Select the folder to show the new note
+  setState({ currentFolder: folder });
+  updateCurrentFolderTitle();
+
+  await refreshNotesList();
+  await handleNoteSelect(note.id);
+
+  // Focus on title
+  document.getElementById('noteTitle').focus();
+};
+
 const handleNoteTitleChange = async event => {
   if (!appState.currentNote) return;
 
@@ -576,6 +615,22 @@ const handleKeyboardShortcuts = event => {
           document.getElementById('searchInput').focus();
         }
         break;
+      case '1':
+        event.preventDefault();
+        handleNewNoteInCategory('projects');
+        break;
+      case '2':
+        event.preventDefault();
+        handleNewNoteInCategory('areas');
+        break;
+      case '3':
+        event.preventDefault();
+        handleNewNoteInCategory('resources');
+        break;
+      case '4':
+        event.preventDefault();
+        handleNewNoteInCategory('archives');
+        break;
     }
   }
 };
@@ -629,6 +684,15 @@ const initializeEventListeners = () => {
   // Tree navigation toggles
   document.querySelectorAll('.tree-nav__header').forEach(header => {
     header.addEventListener('click', handleTreeToggle);
+  });
+
+  // PARA category add buttons
+  document.querySelectorAll('.tree-nav__add-btn').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation(); // Prevent header toggle
+      const category = button.dataset.category;
+      handleNewNoteInCategory(category);
+    });
   });
 
   // Keyboard shortcuts
