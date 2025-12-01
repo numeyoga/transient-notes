@@ -431,6 +431,18 @@ body {
     background: var(--color-hover);
 }
 
+.toolbar__button--delete {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-border);
+    color: #dc2626;
+}
+
+.toolbar__button--delete:hover {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+
 .toolbar__button--export {
     background: var(--color-bg-secondary);
     border-color: var(--color-border);
