@@ -127,26 +127,42 @@ const applyInlineStyle = tagName => {
 
   if (existingStyle && range.toString() === existingStyle.textContent) {
     // Retirer le style si toute la sélection est dans le tag
+    const parent = existingStyle.parentNode;
+    const textContent = existingStyle.textContent;
     unwrapElement(existingStyle);
+
+    // Restaurer la sélection sur le texte déballé
+    const newRange = document.createRange();
+    // Trouver le nœud texte qui contient notre contenu
+    for (let i = 0; i < parent.childNodes.length; i++) {
+      const node = parent.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE && node.textContent === textContent) {
+        newRange.selectNodeContents(node);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        break;
+      }
+    }
   } else {
     // Appliquer le style
+    let wrapper;
     try {
-      const wrapper = document.createElement(tagName);
+      wrapper = document.createElement(tagName);
       range.surroundContents(wrapper);
     } catch (e) {
       // Fallback pour sélections complexes
       const fragment = range.extractContents();
-      const wrapper = document.createElement(tagName);
+      wrapper = document.createElement(tagName);
       wrapper.appendChild(fragment);
       range.insertNode(wrapper);
     }
-  }
 
-  // Restaurer la sélection
-  selection.removeAllRanges();
-  const newRange = document.createRange();
-  newRange.selectNodeContents(range.startContainer.parentElement || range.startContainer);
-  selection.addRange(newRange);
+    // Restaurer la sélection sur l'élément formaté uniquement
+    const newRange = document.createRange();
+    newRange.selectNodeContents(wrapper);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
 };
 
 // ===== BLOCK FORMATTING =====
