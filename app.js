@@ -187,6 +187,17 @@ const exportNoteToTxt = note => {
   return `${note.title}\n${separator}\n\n${content}`;
 };
 
+const exportAllNotesToTxt = notes => {
+  const noteSeparator = '\n\n' + '='.repeat(80) + '\n\n';
+  const header = `TRANSIENT NOTES - Export complet\nDate: ${new Date().toLocaleString('fr-FR')}\nNombre de notes: ${notes.length}\n${'='.repeat(80)}\n\n`;
+
+  const notesContent = notes
+    .map(note => exportNoteToTxt(note))
+    .join(noteSeparator);
+
+  return header + notesContent;
+};
+
 // ===== STATE MANAGEMENT =====
 
 let appState = {
@@ -410,6 +421,28 @@ const handleExport = () => {
   URL.revokeObjectURL(url);
 };
 
+const handleExportAll = () => {
+  if (appState.notes.length === 0) {
+    alert('Aucune note à exporter');
+    return;
+  }
+
+  const sortedNotes = sortNotesByModified(appState.notes);
+  const txtContent = exportAllNotesToTxt(sortedNotes);
+  const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `transient-notes-export-${timestamp}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+};
+
 const handleDelete = async () => {
   if (!appState.currentNote) return;
 
@@ -585,6 +618,7 @@ const handleKeyboardShortcuts = event => {
 const initializeEventListeners = () => {
   // Header actions
   document.getElementById('newNoteBtn').addEventListener('click', handleNewNote);
+  document.getElementById('exportAllBtn').addEventListener('click', handleExportAll);
   document.getElementById('searchInput').addEventListener('input', handleSearch);
 
   // Sidebar
