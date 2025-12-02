@@ -63,6 +63,204 @@ const createPreview = html => pipe(
   text => truncateText(text, 100)
 )(html);
 
+// ===== SELECTION API UTILITIES (PURE FUNCTIONS) =====
+
+const getSelectionAndRange = () => {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return null;
+  return { selection, range: selection.getRangeAt(0) };
+};
+
+const isRangeEmpty = range => range.collapsed;
+
+const isBlockElement = element => {
+  const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'LI'];
+  return element && blockTags.includes(element.tagName);
+};
+
+const findParentBlock = node => {
+  let current = node;
+
+  // Si c'est un text node, prendre le parent
+  while (current && current.nodeType !== Node.ELEMENT_NODE) {
+    current = current.parentNode;
+  }
+
+  // Chercher le bloc parent éditable
+  const editorBody = document.getElementById('noteBody');
+  while (current && current !== editorBody && !isBlockElement(current)) {
+    current = current.parentNode;
+  }
+
+  return current === editorBody ? null : current;
+};
+
+const hasParentWithTag = (node, tagName) => {
+  let current = node;
+  const editorBody = document.getElementById('noteBody');
+
+  while (current && current !== editorBody) {
+    if (current.nodeType === Node.ELEMENT_NODE && current.tagName === tagName.toUpperCase()) {
+      return current;
+    }
+    current = current.parentNode;
+  }
+  return null;
+};
+
+const unwrapElement = element => {
+  const parent = element.parentNode;
+  while (element.firstChild) {
+    parent.insertBefore(element.firstChild, element);
+  }
+  parent.removeChild(element);
+};
+
+// ===== INLINE STYLE FORMATTING =====
+
+const applyInlineStyle = tagName => {
+  const sel = getSelectionAndRange();
+  if (!sel || isRangeEmpty(sel.range)) return;
+
+  const { selection, range } = sel;
+  const existingStyle = hasParentWithTag(range.commonAncestorContainer, tagName);
+
+  if (existingStyle && range.toString() === existingStyle.textContent) {
+    // Retirer le style si toute la sélection est dans le tag
+    unwrapElement(existingStyle);
+  } else {
+    // Appliquer le style
+    try {
+      const wrapper = document.createElement(tagName);
+      range.surroundContents(wrapper);
+    } catch (e) {
+      // Fallback pour sélections complexes
+      const fragment = range.extractContents();
+      const wrapper = document.createElement(tagName);
+      wrapper.appendChild(fragment);
+      range.insertNode(wrapper);
+    }
+  }
+
+  // Restaurer la sélection
+  selection.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.selectNodeContents(range.startContainer.parentElement || range.startContainer);
+  selection.addRange(newRange);
+};
+
+// ===== BLOCK FORMATTING =====
+
+const applyBlockFormat = tagName => {
+  const sel = getSelectionAndRange();
+  if (!sel) return;
+
+  const block = findParentBlock(sel.range.commonAncestorContainer);
+  if (!block) {
+    // Pas de bloc trouvé, créer un nouveau bloc
+    const newBlock = document.createElement(tagName);
+    newBlock.innerHTML = sel.range.toString() || '<br>';
+    sel.range.deleteContents();
+    sel.range.insertNode(newBlock);
+
+    // Placer le curseur
+    const newRange = document.createRange();
+    newRange.selectNodeContents(newBlock);
+    newRange.collapse(false);
+    sel.selection.removeAllRanges();
+    sel.selection.addRange(newRange);
+    return;
+  }
+
+  // Si c'est déjà le bon type, convertir en <p>
+  const newTagName = block.tagName === tagName.toUpperCase() ? 'p' : tagName;
+  const newBlock = document.createElement(newTagName);
+  newBlock.innerHTML = block.innerHTML;
+  block.replaceWith(newBlock);
+
+  // Restaurer la sélection
+  const newRange = document.createRange();
+  newRange.selectNodeContents(newBlock);
+  newRange.collapse(false);
+  sel.selection.removeAllRanges();
+  sel.selection.addRange(newRange);
+};
+
+// ===== LIST FORMATTING =====
+
+const toggleList = listType => {
+  const sel = getSelectionAndRange();
+  if (!sel) return;
+
+  const { selection, range } = sel;
+  let block = findParentBlock(range.commonAncestorContainer);
+
+  // Vérifier si on est déjà dans une liste
+  const existingList = hasParentWithTag(range.commonAncestorContainer, 'UL') ||
+                       hasParentWithTag(range.commonAncestorContainer, 'OL');
+
+  if (existingList) {
+    // Retirer de la liste
+    const li = hasParentWithTag(range.commonAncestorContainer, 'LI');
+    if (li) {
+      const p = document.createElement('p');
+      p.innerHTML = li.innerHTML;
+
+      if (existingList.children.length === 1) {
+        // Dernière ligne, supprimer toute la liste
+        existingList.replaceWith(p);
+      } else {
+        // Convertir seulement ce li en p
+        li.replaceWith(p);
+      }
+
+      // Placer le curseur
+      const newRange = document.createRange();
+      newRange.selectNodeContents(p);
+      newRange.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+  } else {
+    // Créer une liste
+    const list = document.createElement(listType);
+    const li = document.createElement('li');
+
+    if (block && isBlockElement(block)) {
+      li.innerHTML = block.innerHTML;
+      list.appendChild(li);
+      block.replaceWith(list);
+    } else {
+      li.innerHTML = range.toString() || '<br>';
+      list.appendChild(li);
+      range.deleteContents();
+      range.insertNode(list);
+    }
+
+    // Placer le curseur dans le li
+    const newRange = document.createRange();
+    newRange.selectNodeContents(li);
+    newRange.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  }
+};
+
+// ===== FORMAT ACTION MAPPINGS =====
+
+const formatActions = {
+  bold: () => applyInlineStyle('strong'),
+  italic: () => applyInlineStyle('em'),
+  underline: () => applyInlineStyle('u'),
+  strikethrough: () => applyInlineStyle('s'),
+  h1: () => applyBlockFormat('h1'),
+  h2: () => applyBlockFormat('h2'),
+  h3: () => applyBlockFormat('h3'),
+  blockquote: () => applyBlockFormat('blockquote'),
+  ul: () => toggleList('ul'),
+  ol: () => toggleList('ol')
+};
+
 // ===== DATABASE OPERATIONS =====
 
 const openDatabase = () => new Promise((resolve, reject) => {
@@ -559,28 +757,11 @@ const handleDragLeave = event => {
 // ===== TOOLBAR ACTIONS =====
 
 const handleToolbarAction = action => {
-  const selection = window.getSelection();
-  if (!selection.rangeCount) return;
-
-  switch (action) {
-    case 'bold':
-      document.execCommand('bold', false, null);
-      break;
-    case 'italic':
-      document.execCommand('italic', false, null);
-      break;
-    case 'h1':
-      document.execCommand('formatBlock', false, '<h1>');
-      break;
-    case 'h2':
-      document.execCommand('formatBlock', false, '<h2>');
-      break;
-    case 'ul':
-      document.execCommand('insertUnorderedList', false, null);
-      break;
+  const formatFn = formatActions[action];
+  if (formatFn) {
+    formatFn();
+    handleNoteContentChange();
   }
-
-  handleNoteContentChange();
 };
 
 // ===== TREE NAVIGATION TOGGLE =====
@@ -646,6 +827,18 @@ const handleKeyboardShortcuts = event => {
         if (!event.target.matches('#searchInput')) {
           event.preventDefault();
           document.getElementById('searchInput').focus();
+        }
+        break;
+      case 'u':
+        if (!event.shiftKey) {
+          event.preventDefault();
+          handleToolbarAction('underline');
+        }
+        break;
+      case 'X':
+        if (event.shiftKey) {
+          event.preventDefault();
+          handleToolbarAction('strikethrough');
         }
         break;
       case '1':
